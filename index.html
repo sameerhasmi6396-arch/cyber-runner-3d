@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cyber Runner 3D - Endless Runner Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .score-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            pointer-events: none;
+        }
+        .game-over-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            pointer-events: all;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+        .game-over-screen h1 {
+            color: #ff0066;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.8);
+        }
+        .game-over-screen p {
+            color: #fff;
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+        .restart-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: linear-gradient(45deg, #00ffff, #0099ff);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        .restart-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+        }
+        .controls-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2em;
+            text-align: center;
+            pointer-events: none;
+        }
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            pointer-events: all;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+        .start-screen h1 {
+            color: #00ffff;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+        }
+        .start-screen p {
+            color: #fff;
+            font-size: 1.3em;
+            margin: 15px 0;
+        }
+        .start-btn {
+            margin-top: 30px;
+            padding: 20px 50px;
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #00ffff, #0099ff);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-overlay">
+        <div class="score-display">
+            <div>Score: <span id="score">0</span></div>
+            <div style="font-size: 0.6em; margin-top: 5px;">High: <span id="highScore">0</span></div>
+        </div>
+        
+        <div class="start-screen" id="startScreen">
+            <h1>🏃 CYBER RUNNER 3D</h1>
+            <p>🎮 Swipe or Arrow Keys to Move</p>
+            <p>⚡ Dodge Obstacles & Collect Coins</p>
+            <p>🚀 Speed Increases Over Time</p>
+            <button class="start-btn" onclick="startGame()">START GAME</button>
+        </div>
+        
+        <div class="game-over-screen" id="gameOverScreen">
+            <h1>GAME OVER!</h1>
+            <p>Score: <span id="finalScore">0</span></p>
+            <p>High Score: <span id="finalHighScore">0</span></p>
+            <p>Coins: <span id="finalCoins">0</span></p>
+            <button class="restart-btn" onclick="restartGame()">PLAY AGAIN</button>
+        </div>
+        
+        <div class="controls-hint" id="controlsHint">
+            Swipe Left/Right to Move | Swipe Up to Jump
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        let gameStarted = false;
+        let gameOver = false;
+        let score = 0;
+        let coins = 0;
+        let highScore = localStorage.getItem('cyberRunnerHighScore') || 0;
+        let speed = 5;
+        let frameCount = 0;
+        
+        const player = {
+            lane: 1,
+            y: 0,
+            jumping: false,
+            jumpHeight: 0,
+            jumpSpeed: 0,
+            size: 40
+        };
+        
+        let obstacles = [];
+        let coinItems = [];
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        document.getElementById('highScore').textContent = highScore;
+        
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('controlsHint').style.display = 'block';
+            gameStarted = true;
+            gameLoop();
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('controlsHint').style.display = 'block';
+            gameOver = false;
+            score = 0;
+            coins = 0;
+            speed = 5;
+            frameCount = 0;
+            player.lane = 1;
+            player.jumping = false;
+            player.jumpHeight = 0;
+            obstacles = [];
+            coinItems = [];
+            gameLoop();
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (!gameStarted || gameOver) return;
+            
+            if (e.key === 'ArrowLeft' && player.lane > 0) {
+                player.lane--;
+            } else if (e.key === 'ArrowRight' && player.lane < 2) {
+                player.lane++;
+            } else if (e.key === 'ArrowUp' || e.key === ' ') {
+                jump();
+            }
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            if (!gameStarted || gameOver) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            if (!gameStarted || gameOver) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (deltaX > 50 && player.lane < 2) {
+                    player.lane++;
+                } else if (deltaX < -50 && player.lane > 0) {
+                    player.lane--;
+                }
+            } else {
+                if (deltaY < -50) {
+                    jump();
+                }
+            }
+        });
+        
+        function jump() {
+            if (!player.jumping) {
+                player.jumping = true;
+                player.jumpSpeed = 15;
+            }
+        }
+        
+        function updatePlayer() {
+            if (player.jumping) {
+                player.jumpHeight += player.jumpSpeed;
+                player.jumpSpeed -= 0.8;
+                
+                if (player.jumpHeight <= 0) {
+                    player.jumpHeight = 0;
+                    player.jumping = false;
+                    player.jumpSpeed = 0;
+                }
+            }
+        }
+        
+        function spawnObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            obstacles.push({
+                lane: lane,
+                y: -100,
+                height: 60 + Math.random() * 40,
+                color: `hsl(${Math.random() * 60 + 300}, 100%, 50%)`
+            });
+        }
+        
+        function spawnCoin() {
+            const lane = Math.floor(Math.random() * 3);
+            coinItems.push({
+                lane: lane,
+                y: -50,
+                collected: false
+            });
+        }
+        
+        function updateObstacles() {
+            obstacles.forEach((obs, index) => {
+                obs.y += speed;
+                
+                if (obs.y > canvas.height) {
+                    obstacles.splice(index, 1);
+                    score += 10;
+                    document.getElementById('score').textContent = score;
+                }
+            });
+        }
+        
+        function updateCoins() {
+            coinItems.forEach((coin, index) => {
+                coin.y += speed;
+                
+                const laneX = getLaneX(coin.lane);
+                const playerX = getLaneX(player.lane);
+                
+                if (!coin.collected && 
+                    Math.abs(laneX - playerX) < 30 && 
+                    Math.abs(coin.y - (canvas.height * 0.7 - player.jumpHeight)) < 40) {
+                    coin.collected = true;
+                    coins++;
+                    score += 5;
+                    document.getElementById('score').textContent = score;
+                }
+                
+                if (coin.y > canvas.height) {
+                    coinItems.splice(index, 1);
+                }
+            });
+        }
+        
+        function checkCollision() {
+            const playerX = getLaneX(player.lane);
+            const playerY = canvas.height * 0.7 - player.jumpHeight;
+            
+            for (let obs of obstacles) {
+                const obsX = getLaneX(obs.lane);
+                const obsY = obs.y;
+                
+                if (Math.abs(playerX - obsX) < 40 && 
+                    playerY + player.size > obsY && 
+                    playerY < obsY + obs.height) {
+                    endGame();
+                    return;
+                }
+            }
+        }
+        
+        function getLaneX(lane) {
+            const laneWidth = canvas.width / 3;
+            return laneWidth * lane + laneWidth / 2;
+        }
+        
+        function draw() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0f0c29');
+            gradient.addColorStop(0.5, '#302b63');
+            gradient.addColorStop(1, '#24243e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            for (let i = 1; i < 3; i++) {
+                const x = (canvas.width / 3) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 10; i++) {
+                const y = ((frameCount * speed + i * 100) % canvas.height);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            obstacles.forEach(obs => {
+                const x = getLaneX(obs.lane);
+                ctx.fillStyle = obs.color;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = obs.color;
+                ctx.fillRect(x - 30, obs.y, 60, obs.height);
+                ctx.shadowBlur = 0;
+            });
+            
+            coinItems.forEach(coin => {
+                if (!coin.collected) {
+                    const x = getLaneX(coin.lane);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(x, coin.y, 15, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+            
+            const playerX = getLaneX(player.lane);
+            const playerY = canvas.height * 0.7 - player.jumpHeight;
+            
+            ctx.fillStyle = '#00ffff';
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillRect(playerX - player.size/2, playerY, player.size, player.size);
+            ctx.shadowBlur = 0;
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(playerX - 12, playerY + 10, 8, 8);
+            ctx.fillRect(playerX + 4, playerY + 10, 8, 8);
+        }
+        
+        function endGame() {
+            gameOver = true;
+            document.getElementById('controlsHint').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalCoins').textContent = coins;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('cyberRunnerHighScore', highScore);
+            }
+            
+            document.getElementById('finalHighScore').textContent = highScore;
+            document.getElementById('highScore').textContent = highScore;
+        }
+        
+        function gameLoop() {
+            if (gameOver) return;
+            
+            frameCount++;
+            
+            if (frameCount % 80 === 0) {
+                spawnObstacle();
+            }
+            
+            if (frameCount % 120 === 0) {
+                spawnCoin();
+            }
+            
+            if (frameCount % 300 === 0) {
+                speed += 0.5;
+            }
+            
+            updatePlayer();
+            updateObstacles();
+            updateCoins();
+            checkCollision();
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
